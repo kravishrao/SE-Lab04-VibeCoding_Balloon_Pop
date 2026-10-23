@@ -8,6 +8,7 @@ lives system yet, no timer yet. Click detection also has a known bug
 """
 
 import random
+import pygame
 
 from game.balloon import Balloon, BALLOON_TYPES
 from game.click_detection import check_pop
@@ -15,6 +16,7 @@ from game.renderer import WIDTH, HEIGHT
 
 SPAWN_INTERVAL_FRAMES = 45
 POINTS_PER_POP = 10
+ROUND_DURATION = 30
 
 
 class GameEngine:
@@ -24,6 +26,17 @@ class GameEngine:
         self.score = 0
         self.lives = 3
         self.game_over = False
+        self.time_left = ROUND_DURATION
+        self.start_ticks = None
+
+    def reset_round(self):
+        self.balloons = []
+        self.frames_until_spawn = 0
+        self.score = 0
+        self.lives = 3
+        self.game_over = False
+        self.time_left = ROUND_DURATION
+        self.start_ticks = None
 
     def _spawn_balloon(self):
         radius = random.randint(16, 44)
@@ -53,6 +66,19 @@ class GameEngine:
 
     def update(self):
         if self.game_over:
+            return
+
+        if self.start_ticks is None:
+            self.start_ticks = pygame.time.get_ticks()
+
+        elapsed_seconds = (
+            pygame.time.get_ticks() - self.start_ticks
+        ) // 1000
+
+        self.time_left = max(0, ROUND_DURATION - elapsed_seconds)
+
+        if self.time_left <= 0:
+            self.game_over = True
             return
 
         self.frames_until_spawn -= 1
@@ -87,6 +113,13 @@ class GameEngine:
         renderer.draw_text(
             surface, font, f"Lives: {self.lives}", (10, 38)
         )
+        renderer.draw_text(
+            surface, font, f"Time: {self.time_left}", (10, 66)
+        )
 
         if self.game_over:
-            renderer.draw_banner(surface, font, "GAME OVER")
+            renderer.draw_banner(
+                surface,
+                font,
+                f"GAME OVER - Final Score: {self.score}",
+            )
